@@ -6,8 +6,6 @@ import static org.basex.core.Text.*;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.URL;
 
 import org.basex.BaseXServer;
@@ -22,7 +20,9 @@ import org.basex.util.Args;
 import org.basex.util.Performance;
 import org.basex.util.Token;
 import org.basex.util.Util;
+import org.mortbay.jetty.Connector;
 import org.mortbay.jetty.Server;
+import org.mortbay.jetty.nio.SelectChannelConnector;
 
 /**
  * This is the main class for the starting the database HTTP services.
@@ -73,6 +73,7 @@ public final class BaseXHTTP {
     final MainProp mprop = context.mprop;
 
     final int port = mprop.num(MainProp.SERVERPORT);
+    final String serverHost = context.mprop.get(MainProp.SERVERHOST);
     final int eport = mprop.num(MainProp.EVENTPORT);
     final int hport = mprop.num(MainProp.HTTPPORT);
     final String host = mprop.get(MainProp.HOST);
@@ -107,7 +108,13 @@ public final class BaseXHTTP {
 
     System.setProperty("STOP.PORT", "8985");
     System.setProperty("STOP.KEY", "8985");
-    jetty = new Server(hport);
+    jetty = new Server();
+    Connector connector = new SelectChannelConnector();
+    if (!serverHost.isEmpty()) {
+      connector.setHost(serverHost);
+    }
+    connector.setPort(hport);
+    jetty.addConnector(connector);
 
     final org.mortbay.jetty.servlet.Context jcontext =
         new org.mortbay.jetty.servlet.Context(jetty, "/",
@@ -117,10 +124,6 @@ public final class BaseXHTTP {
     if(webdav) jcontext.addServlet(WebDAVServlet.class, "/webdav/*");
 
     jetty.start();
-
-    final ServerSocket socket = new ServerSocket();
-    socket.setReuseAddress(true);
-    socket.bind(new InetSocketAddress(hport + 1));
   }
 
   /**
